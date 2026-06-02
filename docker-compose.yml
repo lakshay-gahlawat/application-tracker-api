@@ -1,0 +1,47 @@
+services:
+  app:
+    build: .
+    container_name: application_tracker_app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+
+  redis:
+    image: redis:7-alpine
+    container_name: application_tracker_redis
+    ports:
+      - "6379:6379"
+
+  worker:
+    build: .
+    container_name: application_tracker_worker
+
+    command: celery -A app.core.celery_app.celery_app worker --loglevel=info
+
+    env_file:
+      - .env
+
+    volumes:
+      - .:/app
+
+    depends_on:
+      - redis
+
+  scheduler:
+    build: .
+
+    container_name: application_tracker_scheduler
+
+    command: python run_scheduler.py
+
+    env_file:
+      - .env
+
+    depends_on:
+      - redis
+
+
+
