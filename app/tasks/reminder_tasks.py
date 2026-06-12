@@ -6,6 +6,7 @@ import logging
 from app.services.reminder_service import ReminderService
 from app.services.notification_service import NotificationService
 from app.services.auditlog_service import AuditLogService
+from app.services.email_service import EmailService
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,13 @@ def reminder_notification(
         )
 
         reminder_service = ReminderService(db)
+        email_service = EmailService()
+
+        email_service.send_reminder_email(
+            to_email=reminder.application.user.email,
+            company_name=reminder.application.company_name,
+            role=reminder.application.role
+        )
 
         reminder_service.mark_reminder_completed(
             reminder

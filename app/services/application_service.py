@@ -54,7 +54,8 @@ class ApplicationService:
         existing = self.db.query(Application).filter(
             Application.user_id == current_user.id,
             Application.company_name == app_data.company_name,
-            Application.role == app_data.role
+            Application.role == app_data.role,
+            Application.deleted_at.is_(None)
         ).first()
 
         if existing:

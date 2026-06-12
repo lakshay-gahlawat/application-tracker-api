@@ -14,6 +14,7 @@ REDIS_URL = REDIS_URL = os.getenv(
     "REDIS_URL",
     "redis://redis:6379/0"
 )
+RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 
 #redis://redis:6379/0 is correct when running through Docker Compose.
 #    "redis://localhost:6379/0"
