@@ -5,7 +5,10 @@ from app.dependencies.deps import get_db
 from app.dependencies.auth import get_current_admin
 from app.models.user_model import User
 from app.schemas.admin_schema import AdminUserResponse, AuditLogResponse
+from app.schemas.admin import AdminAnalyticsResponse
+
 from app.services.auditlog_service import AuditLogService
+from app.services.admin_service import AdminService
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -42,3 +45,10 @@ def get_audit_log(
     db: Session = Depends(get_db)
 ):
     return AuditLogService(db).get_logs()
+
+@router.get("/analytics", response_model=AdminAnalyticsResponse)
+def get_analytics(
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    return AdminService(db).get_analytics()
