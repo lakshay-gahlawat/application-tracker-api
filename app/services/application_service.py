@@ -19,6 +19,9 @@ from app.schemas.application import (
 from app.services.auditlog_service import AuditLogService
 from app.core.redis_client import redis_client
 
+import csv
+from io import StringIO
+
 
 class ApplicationService:
 
@@ -45,6 +48,15 @@ class ApplicationService:
             )
 
         return application
+    
+    def _get_application_query(
+        self,
+        current_user: User
+    ):
+        return self.db.query(Application).filter(
+            Application.user_id == current_user.id,
+            Application.deleted_at.is_(None)
+        )
 
     def create_application(
         self,
@@ -98,23 +110,14 @@ class ApplicationService:
         )
 
         return application
-
-    def get_applications(
+    
+    def _apply_filters(
         self,
-        current_user: User,
-        page: int,
-        limit: int,
-        status_filter: str | None,
-        company: str | None,
-        role: str | None,
-        sort_by: str | None,
-        order: str | None
+        query,
+        status_filter=None,
+        company=None,
+        role=None
     ):
-        query = self.db.query(Application).filter(
-            Application.user_id == current_user.id,
-            Application.deleted_at.is_(None)
-        )
-
         if status_filter:
             try:
                 status_enum = ApplicationStatus(status_filter)
@@ -133,6 +136,31 @@ class ApplicationService:
             query = query.filter(
                 Application.role == role
             )
+
+        return query
+
+    def get_applications(
+        self,
+        current_user: User,
+        page: int,
+        limit: int,
+        status_filter: str | None,
+        company: str | None,
+        role: str | None,
+        sort_by: str | None,
+        order: str | None
+    ):
+        query = self.db.query(Application).filter(
+            Application.user_id == current_user.id,
+            Application.deleted_at.is_(None)
+        )
+
+        query = self._apply_filters(
+            query,
+            status_filter,
+            company,
+            role
+        )
 
         total = query.count()
 
@@ -342,3 +370,58 @@ class ApplicationService:
         self.db.refresh(application)
 
         return application
+
+    def export_applications_csv(
+            self,
+            current_user,
+            status_filter,
+            company,
+            role
+    ):
+        query = self._get_application_query(
+            current_user
+        )
+
+        query = self._apply_filters(
+            query,
+            status_filter,
+            company,
+            role
+        )
+
+        applications = query.all()
+
+        output = StringIO()
+
+        writer = csv.writer(output)
+
+        writer.writerow([
+            "Company Name",
+            "Role",
+            "Status",
+            "Applied Date",
+            "Job Link",
+            "Notes",
+            "Created At",
+            "Updated At"
+        ])
+
+        for application in applications:
+            writer.writerow([
+                application.company_name,
+                application.role,
+                application.status.value,
+                application.applied_date.strftime("%Y-%m-%d")
+                if application.applied_date else "",
+                application.job_link or "",
+                application.notes or "",
+                application.created_at.strftime("%Y-%m-%d %H:%M:%S")
+                if application.created_at else "",
+                application.updated_at.strftime("%Y-%m-%d %H:%M:%S")
+                if application.updated_at else ""
+        ])
+
+
+        output.seek(0)
+
+        return output

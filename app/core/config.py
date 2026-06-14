@@ -12,7 +12,7 @@ REMINDER_CHECK_INTERVAL = int(os.getenv("REMINDER_CHECK_INTERVAL", "10"))
 REMINDER_PROCESSING_TIMEOUT_MINUTES = int(os.getenv("REMINDER_PROCESSING_TIMEOUT_MINUTES", "5"))
 REDIS_URL = REDIS_URL = os.getenv(
     "REDIS_URL",
-    "redis://redis:6379/0"
+    "redis://localhost:6379/0"
 )
 RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 

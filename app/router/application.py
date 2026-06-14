@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Query, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.schemas.application import (
@@ -60,6 +61,38 @@ def get_applications(
         order
     )
 
+@router.get("/export")
+def export_applications(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    status_filter: str | None = None,
+    company: str | None = None,
+    role: str | None = None
+):
+    csv_file = ApplicationService(db).export_applications_csv(
+        current_user=current_user,
+        status_filter=status_filter,
+        company=company,
+        role=role
+    )
+
+    from datetime import date
+
+    today = date.today().isoformat()
+
+    if status_filter:
+        filename = f"applications_{status_filter}_{today}.csv"
+    else:
+        filename = f"applications_all_{today}.csv"
+
+    return StreamingResponse(
+        csv_file,
+        media_type="text/csv",
+        headers={
+            "Content-Disposition":
+            f"attachment; filename={filename}"
+        }
+    )
 
 @router.get("/{application_id}", response_model=ApplicationResponse)
 def get_application_by_id(
