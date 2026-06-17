@@ -6,7 +6,6 @@ from slowapi import _rate_limit_exceeded_handler
 from app.core.rate_limiter import limiter
 from app.router.v1 import v1_router
 from app.core.config import TESTING
-print(f"TESTING={TESTING}")
 
 app = FastAPI()
 
