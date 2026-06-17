@@ -28,7 +28,7 @@ def register_user(
 
 
 @router.post("/auth/login")
-@limiter.limit("5/minute")
+# @limiter.limit("5/minute")
 def login_user(
     request: Request,
     login: UserLogin,

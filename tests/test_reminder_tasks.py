@@ -75,7 +75,13 @@ class TestReminderNotificationTask:
         reminder = make_reminder(db_session, app, is_processing=True)
         reminder_id = reminder.id
 
-        with patch("app.tasks.reminder_tasks.SessionLocal", return_value=db_session):
+        with patch(
+            "app.tasks.reminder_tasks.SessionLocal",
+            return_value=db_session
+        ), patch(
+            "app.tasks.reminder_tasks.EmailService.send_reminder_email",
+            return_value=None
+        ):
             reminder_notification.run(reminder_id, "Follow up")
 
         result = db_session.get(ApplicationReminder, reminder_id)
@@ -95,8 +101,13 @@ class TestReminderNotificationTask:
         app = make_application(db_session, user)
         reminder = make_reminder(db_session, app)
         reminder_id = reminder.id
-
-        with patch("app.tasks.reminder_tasks.SessionLocal", return_value=db_session):
+        with patch(
+            "app.tasks.reminder_tasks.SessionLocal",
+            return_value=db_session
+        ), patch(
+            "app.tasks.reminder_tasks.EmailService.send_reminder_email",
+            return_value=None
+        ):
             reminder_notification.run(reminder_id, "Follow up")
 
         result = db_session.get(ApplicationReminder, reminder_id)
