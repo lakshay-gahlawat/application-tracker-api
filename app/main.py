@@ -1,4 +1,3 @@
-from app.router import auth, application, reminders, dashboards, admin
 from fastapi import FastAPI
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.errors import RateLimitExceeded

@@ -1,5 +1,4 @@
 from tests.conftest import register_and_login, register_user, get_auth_headers, BASE_URL
-from tests.conftest import register_and_login, BASE_URL
 from app.models.user_model import User
 from app.models.enums import UserRole
 from app.dependencies.deps import get_db

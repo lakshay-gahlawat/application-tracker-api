@@ -1,6 +1,5 @@
 import os
 os.environ["TESTING"] = "true"
-from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy import create_engine
@@ -11,11 +10,6 @@ from app.main import app
 from app.database.session import Base
 from app.dependencies.deps import get_db
 from app.core.config import TEST_DATABASE_URL
-from app.models import (
-    user_model, application_model,
-    application_status_history, reminder_model,
-    notification_model, auditlog_model
-)
 
 engine = create_engine(TEST_DATABASE_URL)
 
