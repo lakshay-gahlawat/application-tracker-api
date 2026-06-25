@@ -48,3 +48,6 @@ jobs:
           TESTING: "True"
           TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
         run: pytest -v
+
+      - name: Build Docker images
+        run: docker compose build
