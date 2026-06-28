@@ -22,6 +22,10 @@ from app.core.redis_client import redis_client
 import csv
 from io import StringIO
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class ApplicationService:
 
@@ -71,6 +75,13 @@ class ApplicationService:
         ).first()
 
         if existing:
+            logger.warning(
+                "APPLICATION_CREATE_FAILED | user_id=%s | company=%s | role=%s | reason=duplicate_application",
+                current_user.id,
+                app_data.company_name,
+                app_data.role,
+            )
+
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Application already exists"
@@ -104,6 +115,14 @@ class ApplicationService:
         self.db.add(history)
         self.db.commit()
         self.db.refresh(application)
+
+        logger.info(
+            "APPLICATION_CREATED | application_id=%s | user_id=%s | company=%s | role=%s",
+            application.id,
+            current_user.id,
+            application.company_name,
+            application.role,
+        )
 
         redis_client.delete(
             f"dashboard_stats:{current_user.id}"
@@ -252,6 +271,12 @@ class ApplicationService:
             ).first()
 
             if existing:
+                logger.warning(
+                    "APPLICATION_UPDATE_FAILED | user_id=%s | application_id=%s | reason=duplicate_application",
+                    current_user.id,
+                    application.id,
+                )
+
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="Application already exists"
@@ -269,6 +294,12 @@ class ApplicationService:
 
         self.db.commit()
         self.db.refresh(application)
+
+        logger.info(
+            "APPLICATION_UPDATED | application_id=%s | user_id=%s",
+            application.id,
+            current_user.id,
+        )
 
         redis_client.delete(
             f"dashboard_stats:{current_user.id}"
@@ -295,6 +326,12 @@ class ApplicationService:
 
         application.deleted_at  = datetime.utcnow()
         self.db.commit()
+
+        logger.info(
+            "APPLICATION_DELETED | application_id=%s | user_id=%s",
+            application.id,
+            current_user.id,
+        )
 
         redis_client.delete(
             f"dashboard_stats:{current_user.id}"
@@ -352,6 +389,13 @@ class ApplicationService:
             new_status
             not in allowed_transitions[current_status]
         ):
+            logger.warning(
+                "APPLICATION_STATUS_UPDATE_FAILED | application_id=%s | from=%s | to=%s | reason=invalid_transition",
+                application.id,
+                application.status,
+                new_status,
+            )
+
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Transition not allowed"
@@ -368,6 +412,14 @@ class ApplicationService:
         self.db.add(history)
         self.db.commit()
         self.db.refresh(application)
+
+        logger.info(
+            "APPLICATION_STATUS_UPDATED | application_id=%s | user_id=%s | from=%s | to=%s",
+            application.id,
+            current_user.id,
+            current_status,
+            new_status,
+        )
 
         return application
 

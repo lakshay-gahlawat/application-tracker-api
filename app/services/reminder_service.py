@@ -11,6 +11,10 @@ from app.services.auditlog_service import AuditLogService
 from datetime import datetime
 from app.core.redis_client import redis_client
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 class ReminderService:
 
     def __init__(self, db: Session):
@@ -63,6 +67,11 @@ class ReminderService:
         ).first()
 
         if existing_reminder:
+            logger.warning(
+                "REMINDER_CREATE_FAILED | application_id=%s | user_id=%s | reason=duplicate_reminder",
+                application.id,
+                current_user.id,
+            )
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Reminder already exists"
@@ -82,9 +91,15 @@ class ReminderService:
             entity_id=application_reminder.id
         )
 
-        self.db.add(application_reminder)
         self.db.commit()
         self.db.refresh(application_reminder)
+
+        logger.info(
+            "REMINDER_CREATED | reminder_id=%s | application_id=%s | user_id=%s",
+            application_reminder.id,
+            application_reminder.application_id,
+            current_user.id,
+        )
 
         redis_client.delete(
         f"dashboard_stats:{current_user.id}"
@@ -139,6 +154,10 @@ class ReminderService:
         )
 
         if reminder.is_done:
+            logger.warning(
+                "REMINDER_COMPLETE_FAILED | reminder_id=%s | reason=already_completed",
+                reminder.id,
+            )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Reminder already completed"
@@ -148,13 +167,19 @@ class ReminderService:
 
         AuditLogService(self.db).create_log(
             user_id=current_user.id,
-            action="REMINDER_CREATED",
+            action="REMINDER_COMPLETED",
             entity_type="application_reminder",
             entity_id=reminder.id
         )
 
         self.db.commit()
         self.db.refresh(reminder)
+
+        logger.info(
+            "REMINDER_COMPLETED | reminder_id=%s | application_id=%s",
+            reminder.id,
+            reminder.application_id,
+        )
 
         redis_client.delete(
         f"dashboard_stats:{current_user.id}"
@@ -191,9 +216,14 @@ class ReminderService:
 
         AuditLogService(self.db).create_log(
             user_id=None,
-            action="REMINDER_CREATED",
+            action="REMINDER_COMPLETED",
             entity_type="application_reminder",
             entity_id=reminder.id
         )
 
         self.db.commit()
+
+        logger.warning(
+            "STALE_REMINDER_RECOVERED | reminder_id=%s",
+            reminder.id,
+        )

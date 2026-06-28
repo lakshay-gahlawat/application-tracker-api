@@ -5,8 +5,14 @@ from slowapi import _rate_limit_exceeded_handler
 from app.core.rate_limiter import limiter
 from app.router.v1 import v1_router
 from app.core.config import TESTING
+import app.core.logging
+from app.core.exception_handler import register_exception_handlers
+from app.core.middleware import register_middleware
 
 app = FastAPI()
+
+register_exception_handlers(app)
+register_middleware(app)
 
 app.include_router(v1_router)
 

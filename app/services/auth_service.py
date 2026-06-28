@@ -5,6 +5,9 @@ from app.models.user_model import User
 from app.schemas.user import UserCreate, UserUpdate
 from app.core.security import hash_password, verify_password
 from app.core.auth import create_access_token
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class AuthService:
@@ -21,6 +24,11 @@ class AuthService:
         ).first()
 
         if existing_user:
+            logger.warning(
+                "USER_REGISTER_FAILED | email=%s | reason=duplicate_email",
+                user_data.email,
+            )
+
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Email already exists"
@@ -34,6 +42,12 @@ class AuthService:
         self.db.add(user)
         self.db.commit()
         self.db.refresh(user)
+
+        logger.info(
+            "USER_REGISTER_SUCCESS | user_id=%s | email=%s",
+            user.id,
+            user.email,
+        )
 
         return user
 
@@ -50,10 +64,21 @@ class AuthService:
             password,
             user.hashed_password
         ):
+            logger.warning(
+                "USER_LOGIN_FAILED | email=%s | reason=invalid_credentials",
+                email,
+            )
+
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email or password"
             )
+
+        logger.info(
+            "USER_LOGIN_SUCCESS | user_id=%s | email=%s",
+            user.id,
+            user.email,
+        )
 
         token = create_access_token(user.id)
 
@@ -81,6 +106,12 @@ class AuthService:
                 existing_user
                 and existing_user.id != current_user.id
             ):
+                
+                logger.warning(
+                    "USER_UPDATE_FAILED | user_id=%s | reason=duplicate_email",
+                    current_user.id,
+                )
+                                
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="Email already exists"
@@ -100,6 +131,12 @@ class AuthService:
         self.db.commit()
         self.db.refresh(current_user)
 
+        logger.info(
+            "USER_UPDATE_SUCCESS | user_id=%s | email=%s",
+            current_user.id,
+            current_user.email,
+        )
+
         return current_user
 
     def delete_user(
@@ -108,6 +145,12 @@ class AuthService:
     ):
         self.db.delete(current_user)
         self.db.commit()
+
+        logger.info(
+            "USER_DELETE_SUCCESS | user_id=%s | email=%s",
+            current_user.id,
+            current_user.email,
+        )
 
         return {
             "message": "User deleted successfully"
