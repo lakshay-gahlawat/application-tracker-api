@@ -22,3 +22,5 @@ class User(Base):
     notifications = relationship("Notification", back_populates="user")
 
     audit_logs = relationship("AuditLog", back_populates="user")
+
+    sessions = relationship("RefreshSession", back_populates="user", cascade="all, delete-orphan")

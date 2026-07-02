@@ -1,10 +1,13 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.models.refresh_session import RefreshSession
 from app.models.user_model import User
 from app.schemas.user import UserCreate, UserUpdate
 from app.core.security import hash_password, verify_password
 from app.core.auth import create_access_token
+from app.core.auth import create_refresh_token, hash_refresh_token
+from datetime import datetime, timedelta
 import logging
 
 logger = logging.getLogger(__name__)
@@ -80,11 +83,90 @@ class AuthService:
             user.email,
         )
 
-        token = create_access_token(user.id)
+        access_token = create_access_token(user.id)
+
+        refresh_token = create_refresh_token()
+        
+        session = RefreshSession(
+            user_id=user.id,
+            token_hash=hash_refresh_token(refresh_token),
+            expires_at=datetime.utcnow() + timedelta(days=7),
+            revoked_at=None
+        )
+
+        self.db.add(session)
+        self.db.commit()
+        self.db.refresh(session)
 
         return {
-            "access_token": token,
+            "access_token": access_token,
+            "refresh_token": refresh_token,
             "token_type": "Bearer"
+        } 
+    
+    def refresh_access_token(self, refresh_token: str):
+        token_hash = hash_refresh_token(refresh_token)
+
+        session = self.db.query(RefreshSession).filter(
+            RefreshSession.token_hash == token_hash
+        ).first()
+
+        if session is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token"
+            )
+        
+        if session.expires_at < datetime.utcnow():
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token Expired"
+            )
+        
+        if session.revoked_at is not None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail= "Refresh token revvoked"
+            )
+        
+        access_token = create_access_token(session.user_id)
+
+        return {
+            "access_token": access_token,
+            "token_type": "Bearer"
+        }
+    
+    def logout(self, refresh_token: str):
+        token_hash = hash_refresh_token(refresh_token)
+
+        session = self.db.query(RefreshSession).filter(
+            RefreshSession.token_hash == token_hash
+        ).first()
+
+        if session is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token"
+            )
+        
+        if session.expires_at < datetime.utcnow():
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token expired"
+            )
+        
+        if session.revoked_at is not None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token revoked"
+            )
+        
+        session.revoked_at = datetime.utcnow()
+
+        self.db.commit()
+
+        return {
+            "message": "Logged out successfully"
         }
 
     def update_user(
